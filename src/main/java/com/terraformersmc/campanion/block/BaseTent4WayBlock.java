@@ -34,7 +34,7 @@ public abstract class BaseTent4WayBlock extends BaseTentBlock {
 		this.southShape = rotateShape(baseDir, Direction.SOUTH, shape);
 		this.westShape = rotateShape(baseDir, Direction.WEST, shape);
 
-		this.setDefaultState(this.stateManager.getDefaultState().with(FACING, Direction.NORTH));
+		this.setDefaultState(super.getDefaultState().with(FACING, Direction.NORTH));
 	}
 
 	@Override
@@ -60,6 +60,7 @@ public abstract class BaseTent4WayBlock extends BaseTentBlock {
 
 	@Override
 	protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+		super.appendProperties(builder);
 		builder.add(FACING);
 	}
 

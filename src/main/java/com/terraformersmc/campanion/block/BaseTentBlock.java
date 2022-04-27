@@ -3,10 +3,7 @@ package com.terraformersmc.campanion.block;
 import com.terraformersmc.campanion.blockentity.TentPartBlockEntity;
 import com.terraformersmc.campanion.item.CampanionItems;
 import com.terraformersmc.campanion.item.TentBagItem;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockEntityProvider;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
+import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.DyeItem;
@@ -14,6 +11,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtHelper;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.state.StateManager;
+import net.minecraft.state.property.BooleanProperty;
 import net.minecraft.state.property.Property;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.DyeColor;
@@ -33,16 +32,42 @@ import java.util.Map;
 
 public class BaseTentBlock extends Block implements BlockEntityProvider {
 
+	public static final BooleanProperty DESTROYED = BooleanProperty.of("destroyed");
 	private static final Map<Class<?>, Map<DyeColor, BlockState>> TENT_PART_COLOR_MAP = new HashMap<>();
-
 	private final DyeColor color;
 
 	public BaseTentBlock(Settings settings, DyeColor color) {
 		super(settings);
+		setDefaultState(getStateManager().getDefaultState().with(DESTROYED, false));
 		this.color = color;
 		if (this.color != null) {
 			TENT_PART_COLOR_MAP.computeIfAbsent(this.getClass(), aClass -> new HashMap<>()).put(this.color, this.getDefaultState());
 		}
+	}
+
+	public static VoxelShape createDiagonals(int heightStart, int lengthStart, boolean bothSides) {
+		double size = 2D;
+		VoxelShape shape = VoxelShapes.empty();
+		for (double d = 0; d < heightStart; d += size) {
+			shape = VoxelShapes.union(shape, createCuboidShape(0, heightStart - d - size, lengthStart - d - size, 16, heightStart - d + size, lengthStart - d + size));
+			if (bothSides) {
+				shape = VoxelShapes.union(shape, createCuboidShape(0, heightStart - d - size, lengthStart + d - size, 16, heightStart - d + size, lengthStart + d + size));
+			}
+		}
+		return shape;
+	}
+
+	public static VoxelShape rotateShape(Direction from, Direction to, VoxelShape shape) {
+		VoxelShape[] buffer = new VoxelShape[]{shape, VoxelShapes.empty()};
+
+		int times = (to.getHorizontal() - from.getHorizontal() + 4) % 4;
+		for (int i = 0; i < times; i++) {
+			buffer[0].forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> buffer[1] = VoxelShapes.union(buffer[1], VoxelShapes.cuboid(1 - maxZ, minY, minX, 1 - minZ, maxY, maxX)));
+			buffer[0] = buffer[1];
+			buffer[1] = VoxelShapes.empty();
+		}
+
+		return buffer[0];
 	}
 
 	@Override
@@ -134,34 +159,23 @@ public class BaseTentBlock extends Block implements BlockEntityProvider {
 		super.onBreak(world, pos, state, player);
 	}
 
-
 	@Override
 	public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
 		return new TentPartBlockEntity(pos, state);
 	}
 
-	public static VoxelShape createDiagonals(int heightStart, int lengthStart, boolean bothSides) {
-		double size = 2D;
-		VoxelShape shape = VoxelShapes.empty();
-		for (double d = 0; d < heightStart; d += size) {
-			shape = VoxelShapes.union(shape, createCuboidShape(0, heightStart - d - size, lengthStart - d - size, 16, heightStart - d + size, lengthStart - d + size));
-			if (bothSides) {
-				shape = VoxelShapes.union(shape, createCuboidShape(0, heightStart - d - size, lengthStart + d - size, 16, heightStart - d + size, lengthStart + d + size));
-			}
+	@Override
+	public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
+		if (state.get(DESTROYED)) {
+			return VoxelShapes.empty();
+		} else {
+			return super.getCollisionShape(state, world, pos, context);
 		}
-		return shape;
 	}
 
-	public static VoxelShape rotateShape(Direction from, Direction to, VoxelShape shape) {
-		VoxelShape[] buffer = new VoxelShape[]{shape, VoxelShapes.empty()};
-
-		int times = (to.getHorizontal() - from.getHorizontal() + 4) % 4;
-		for (int i = 0; i < times; i++) {
-			buffer[0].forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> buffer[1] = VoxelShapes.union(buffer[1], VoxelShapes.cuboid(1 - maxZ, minY, minX, 1 - minZ, maxY, maxX)));
-			buffer[0] = buffer[1];
-			buffer[1] = VoxelShapes.empty();
-		}
-
-		return buffer[0];
+	@Override
+	protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+		super.appendProperties(builder);
+		builder.add(DESTROYED);
 	}
 }

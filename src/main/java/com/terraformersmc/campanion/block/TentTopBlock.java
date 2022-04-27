@@ -44,6 +44,7 @@ public class TentTopBlock extends BaseTentBlock {
 
 	@Override
 	protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+		super.appendProperties(builder);
 		builder.add(AXIS);
 	}
 

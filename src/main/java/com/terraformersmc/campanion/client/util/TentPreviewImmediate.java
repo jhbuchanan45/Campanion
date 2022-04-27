@@ -29,7 +29,7 @@ public class TentPreviewImmediate extends VertexConsumerProvider.Immediate {
 
 	@Override
 	public VertexConsumer getBuffer(RenderLayer renderLayer) {
-		//We always render as translucent, so might as well enfore it.
+		//We always render as translucent, so might as well enforce it.
 		return super.getBuffer(RenderLayer.getTranslucent());
 	}
 }
